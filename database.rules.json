@@ -1,0 +1,79 @@
+{
+  "rules": {
+    ".read":  false,
+    ".write": false,
+
+    "presence": {
+      "$uid": {
+        ".read":     "auth != null",
+        ".write":    "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['online','lastSeen'])"
+      }
+    },
+
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write":    "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['typing','at'])"
+        }
+      }
+    },
+
+    "signaling": {
+      "$targetUid": {
+        ".read":  "auth != null && auth.uid == $targetUid",
+        "offers": {
+          "$key": {
+            ".write":    "auth != null",
+            ".validate": "newData.hasChildren(['from','sdp','ts'])"
+          }
+        },
+        "answers": {
+          "$key": {
+            ".write":    "auth != null",
+            ".validate": "newData.hasChildren(['from','sdp','ts'])"
+          }
+        },
+        "candidates": {
+          "$key": {
+            ".write":    "auth != null",
+            ".validate": "newData.hasChildren(['from','candidate','ts'])"
+          }
+        }
+      }
+    },
+
+    "calls": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid == $uid",
+        ".write": "auth != null",
+        "offer": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['from','callId','callType','sdp','ts']) && newData.child('callType').val() in ['audio','video'])"
+        },
+        "answer": {
+          ".validate": "!newData.exists() || newData.hasChildren(['from','callId','sdp','ts'])"
+        },
+        "end": {
+          ".validate": "!newData.exists() || newData.hasChildren(['callId','from'])"
+        },
+        "candidates": {
+          "$key": {
+            ".validate": "newData.hasChildren(['from','callId','candidate'])"
+          }
+        }
+      }
+    },
+
+    "unread": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid == $uid",
+        ".write": "auth != null",
+        "$chatId": {
+          ".validate": "newData.hasChildren(['count','lastMsg','fromName','chatId','ts'])"
+        }
+      }
+    }
+  }
+}

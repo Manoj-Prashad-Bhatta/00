@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#080518"/>
+  <meta name="description" content="MaSu Peer — Royal P2P Messenger"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>MaSu Peer</title>
+
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="stylesheet" href="/style.css"/>
+
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel standalone (transforms JSX in app.js) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase config + global helpers -->
+  <script>
+    firebase.initializeApp({
+      apiKey:            "AIzaSyDIgOPFxqlBzpEmaNqYwW9ep18-KdqcWRc",
+      authDomain:        "messenger-chat-public.firebaseapp.com",
+      databaseURL:       "https://messenger-chat-public-default-rtdb.firebaseio.com",
+      projectId:         "messenger-chat-public",
+      storageBucket:     "messenger-chat-public.firebasestorage.app",
+      messagingSenderId: "763028111568",
+      appId:             "1:763028111568:web:c5f1b5678230060c721ed5"
+    });
+
+    window.fAuth  = firebase.auth();
+    window.fDB    = firebase.firestore();
+    window.fRTDB  = firebase.database();
+    window.fTS    = () => firebase.firestore.FieldValue.serverTimestamp();
+    window.fRTS   = firebase.database.ServerValue.TIMESTAMP;
+
+    /* ── ICE server cache ──────────────────────────── */
+    window._iceCache = null;
+    window.STATIC_ICE = [
+      { urls: 'stun:stun.l.google.com:19302'  },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      { urls: 'turn:global.relay.metered.ca:80',
+        username: '44f87696edbd19089981a895', credential: 'oWsEc9AqglntDRTm' },
+      { urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+        username: '44f87696edbd19089981a895', credential: 'oWsEc9AqglntDRTm' },
+      { urls: 'turn:global.relay.metered.ca:443',
+        username: '44f87696edbd19089981a895', credential: 'oWsEc9AqglntDRTm' },
+      { urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+        username: '44f87696edbd19089981a895', credential: 'oWsEc9AqglntDRTm' },
+    ];
+
+    window.getICE = async function() {
+      if (window._iceCache) return window._iceCache;
+      try {
+        const r = await fetch(
+          'https://free-messenger-public.metered.live/api/v1/turn/credentials' +
+          '?apiKey=750655d5429bd6029817047c29388816933a'
+        );
+        if (r.ok) { window._iceCache = await r.json(); return window._iceCache; }
+      } catch(_) {}
+      window._iceCache = window.STATIC_ICE;
+      return window.STATIC_ICE;
+    };
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Main app (JSX processed by Babel) -->
+  <script type="text/babel" src="/app.js" data-presets="react,env"></script>
+
+  <!-- PWA service worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

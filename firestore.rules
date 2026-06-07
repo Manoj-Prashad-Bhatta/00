@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ── helpers ───────────────────────────────────── */
+    function isAuth()       { return request.auth != null; }
+    function uid()          { return request.auth.uid; }
+    function incoming()     { return request.resource.data; }
+
+    /* ── users ─────────────────────────────────────── */
+    match /users/{userId} {
+      // Any signed-in user can read profiles (for search by name/shortId)
+      allow read:   if isAuth();
+      // Only the owner can write their own profile
+      allow create: if isAuth() && uid() == userId;
+      allow update: if isAuth() && uid() == userId;
+      allow delete: if false;
+
+      /* friends subcollection */
+      match /friends/{friendId} {
+        allow read:   if isAuth() && uid() == userId;
+        allow write:  if isAuth() && uid() == userId;
+      }
+    }
+
+    /* ── friend requests ───────────────────────────── */
+    match /friendRequests/{reqId} {
+      // Both sender and receiver can read the request
+      allow read: if isAuth() && (
+        resource.data.from == uid() ||
+        resource.data.to   == uid()
+      );
+
+      // Only the sender can create — and must set their own uid as 'from'
+      allow create: if isAuth()
+        && incoming().from    == uid()
+        && incoming().status  == 'pending'
+        && incoming().to      != uid()
+        && incoming().fromName.size() > 0;
+
+      // Receiver can accept/decline; sender can cancel (set declined)
+      allow update: if isAuth() && (
+        resource.data.to   == uid() ||
+        resource.data.from == uid()
+      ) && (
+        incoming().status in ['accepted', 'declined']
+      );
+
+      allow delete: if isAuth() && (
+        resource.data.from == uid() ||
+        resource.data.to   == uid()
+      );
+    }
+
+    /* ── chats ─────────────────────────────────────── */
+    match /chats/{chatId} {
+      allow read:   if isAuth() && uid() in resource.data.members;
+      allow create: if isAuth() && uid() in incoming().members
+                    && incoming().members.size() >= 2;
+      allow update: if isAuth() && uid() in resource.data.members;
+      allow delete: if false;
+
+      /* messages sub-collection */
+      match /messages/{msgId} {
+        function chatMembers() {
+          return get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        }
+
+        allow read:   if isAuth() && uid() in chatMembers();
+
+        allow create: if isAuth()
+          && uid() in chatMembers()
+          && incoming().senderId == uid()
+          && incoming().type in ['text','file','image','system']
+          && (incoming().type != 'text'
+              || (incoming().content is string && incoming().content.size() <= 5000));
+
+        // Allow edits/reactions/read-receipt updates by any chat member
+        allow update: if isAuth() && uid() in chatMembers();
+
+        allow delete: if false;
+      }
+    }
+  }
+}
